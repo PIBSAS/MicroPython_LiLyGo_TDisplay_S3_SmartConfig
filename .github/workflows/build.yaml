@@ -1,4 +1,4 @@
-name: T-Display-S3
+name: T-Display-S3 with SmartConfig
 
 permissions:
   contents: write
@@ -34,16 +34,6 @@ jobs:
        cp "$GITHUB_WORKSPACE/s3lcd/examples/configs/t-display-s3/tft_config.py" "$GITHUB_WORKSPACE/s3lcd/modules/"
        cp "$GITHUB_WORKSPACE/s3lcd/examples/configs/t-display-s3/tft_buttons.py" "$GITHUB_WORKSPACE/s3lcd/modules/"
        cp "$GITHUB_WORKSPACE/s3lcd/examples/chango/chango_16.py" "$GITHUB_WORKSPACE/micropython/ports/esp32/modules/"
-       cp "$GITHUB_WORKSPACE/s3lcd/fonts/vector/gotheng.py" "$GITHUB_WORKSPACE/micropython/ports/esp32/modules/"
-       cp "$GITHUB_WORKSPACE/s3lcd/examples/chango/chango_32.py" "$GITHUB_WORKSPACE/micropython/ports/esp32/modules/"
-       cp "$GITHUB_WORKSPACE/s3lcd/examples/chango/chango_64.py" "$GITHUB_WORKSPACE/micropython/ports/esp32/modules/"
-      # cp $GITHUB_WORKSPACE/s3lcd/fonts/vector/astrol.py "$GITHUB_WORKSPACE/micropython/ports/esp32/modules/"
-      # cp $GITHUB_WORKSPACE/s3lcd/fonts/vector/lowmat.py "$GITHUB_WORKSPACE/micropython/ports/esp32/modules/"
-      # cp $GITHUB_WORKSPACE/s3lcd/fonts/bitmap/vga2_16x32.py "$GITHUB_WORKSPACE/micropython/ports/esp32/modules/"
-      # cp $GITHUB_WORKSPACE/s3lcd/fonts/vector/cyrilc.py "$GITHUB_WORKSPACE/micropython/ports/esp32/modules/"
-      # cp $GITHUB_WORKSPACE/s3lcd/fonts/vector/gothger.py "$GITHUB_WORKSPACE/micropython/ports/esp32/modules/"
-      # cp $GITHUB_WORKSPACE/s3lcd/fonts/vector/gothita.py "$GITHUB_WORKSPACE/micropython/ports/esp32/modules/"
-      # cp $GITHUB_WORKSPACE/s3lcd/fonts/vector/uppmat.py "$GITHUB_WORKSPACE/micropython/ports/esp32/modules/"
       
     - name: Install dependencies
       run: |
@@ -84,33 +74,10 @@ jobs:
       if: success() || failure()
       run: |
         mkdir -p ./artifacts
-        cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8/micropython.bin ./artifacts/micropython_smart.bin || true
-        cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8/bootloader/bootloader.bin ./artifacts/bootloader_smart.bin || true
-        cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8/partition_table/partition-table.bin ./artifacts/partition-table_smart.bin || true
+        cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8/micropython.bin ./artifacts/micropython.bin || true
+        cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8/bootloader/bootloader.bin ./artifacts/bootloader.bin || true
+        cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8/partition_table/partition-table.bin ./artifacts/partition-table.bin || true
 
-    - name: Compilar MicroPython + S3LCD
-      continue-on-error: true
-      run: |
-        source esp/esp-idf/export.sh
-        cd micropython/
-        make -C mpy-cross
-        export IDF_TARGET=esp32s3
-        cd ports/esp32/
-        idf.py -D MICROPY_BOARD=ESP32_GENERIC_S3_N16R8 \
-               -D MICROPY_BOARD_DIR="$GITHUB_WORKSPACE/micropython/ports/esp32/boards/ESP32_GENERIC_S3_N16R8" \
-               -D USER_C_MODULES="$GITHUB_WORKSPACE/s3lcd/src/micropython.cmake" \
-               -D MICROPY_FROZEN_MANIFEST="$GITHUB_WORKSPACE/s3lcd/manifest.py" \
-               -B build-ESP32_GENERIC_S3_N16R8_no_smart build
-
-    
-    - name: Mover binarios MicroPython + S3LCD
-      if: success() || failure()
-      run: |
-        mkdir -p ./artifacts
-        cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8_no_smart/micropython.bin ./artifacts/micropython.bin || true
-        cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8_no_smart/bootloader/bootloader.bin ./artifacts/bootloader.bin || true
-        cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8_no_smart/partition_table/partition-table.bin ./artifacts/partition-table.bin || true
-    
     - name: Get MicroPython Version from mpconfig.h
       run: |
         cd micropython/
@@ -135,20 +102,19 @@ jobs:
       uses: softprops/action-gh-release@v2.0.8
       with:
         tag_name: ${{ env.TAG_NAME }}
-        name: "MicroPython for LilyGo T-Display S3 with S3LCD Driver release version ${{ env.MPY_VERSION }} (Build ${{ env.TAG_NAME }})"
+        name: "MicroPython for LilyGo T-Display S3 with S3LCD Driver and SmartConfig by Walkline80 release version ${{ env.MPY_VERSION }} (Build ${{ env.TAG_NAME }})"
         body: |
           Automated release for MicroPython.
           
-          ## What we get here: 
-          - MicroPython with S3LCD Display Driver:
-            - ```micropython.bin, bootloader.bin and partition-table.bin.```
+          ## What we get here:
           - MicroPython with S3LCD Display Driver and SmartConfig module:
-            - ```micropython_smart.bin, bootloader_smart.bin and partition-table_smart.bin.```
+            - ```micropython.bin, bootloader.bin and partition-table.bin.```
           # Instructions
             You need to have some dependencies pre-instaled in your OS:
             - Python 3
             - Pip
             - Python VENV
+          
           ## Windows:
           ````bash
           python -m venv esp-env
@@ -177,7 +143,6 @@ jobs:
           - With USB cable on USB COM Port, press BOOT button then RST button, release RST, then release BOOT button. Or unplug, press BOOT button meanwhile you plug in the usb cable to PC or SBC like a Raspberry Pi.
           
           ### Erase Flash:
-          #### Step for MicroPython + S3LCD.
           ````bash
           python -m esptool --chip esp32s3 erase_flash
           ````
@@ -185,17 +150,6 @@ jobs:
           - Put 3 binaries in the same folder you are executing the steps, example Downloads folder, you need to be in that folder where are the binaries.
           ````bash
           python -m esptool --chip esp32s3 -b 460800 --before default_reset --after no_reset write_flash --flash_mode dio --flash_size 16MB --flash_freq 80m 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 micropython.bin
-          ````
-          
-          ### Erase Flash:
-          #### Step for MicroPython + S3LCD + SmartConfig:
-          ````bash
-          python -m esptool --chip esp32s3 erase_flash
-          ````
-          ### Then Flash:
-          - Put 3 binaries in the same folder you are executing the steps, example Downloads folder, you need to be in that folder where are the binaries.
-          ````bash
-          python -m esptool --chip esp32s3 -b 460800 --before default_reset --after no_reset write_flash --flash_mode dio --flash_size 16MB --flash_freq 80m 0x0 bootloader_smart.bin 0x8000 partition-table_smart.bin 0x10000 micropython_smart.bin
           ````
           
           ## Linux:
@@ -217,7 +171,6 @@ jobs:
           - With USB cable on USB COM Port, press BOOT button then RST button, release RST, then release BOOT button. Or unplug, press BOOT button meanwhile you plug in the usb cable to PC or SBC like a Raspberry Pi.
           
           ### Erase Flash:
-          #### Step for MicroPython + S3LCD.
           ````bash
           python -m esptool --chip esp32s3 erase_flash
           ````
@@ -225,17 +178,6 @@ jobs:
           - Put 3 binaries in the same folder you are executing the steps, example Downloads folder, you need to be in that folder where are the binaries.
           ````bash
           python -m esptool --chip esp32s3 -b 460800 --before default_reset --after no_reset write_flash --flash_mode dio --flash_size 16MB --flash_freq 80m 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 micropython.bin
-          ````
-          
-          ### Erase Flash:
-          #### Step for MicroPython + S3LCD + SmartConfig:
-          ````bash
-          python -m esptool --chip esp32s3 erase_flash
-          ````
-          ### Then Flash:
-          - Put 3 binaries in the same folder you are executing the steps, example Downloads folder, you need to be in that folder where are the binaries.
-          ````bash
-          python -m esptool --chip esp32s3 -b 460800 --before default_reset --after no_reset write_flash --flash_mode dio --flash_size 16MB --flash_freq 80m 0x0 bootloader_smart.bin 0x8000 partition-table_smart.bin 0x10000 micropython_smart.bin
           ````
           
           ### NOTE IN WINDOWS:

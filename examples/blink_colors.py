@@ -1,0 +1,31 @@
+import s3lcd, tft_config, time
+
+tft =tft_config.config(1)
+tft.init()
+
+for i in range(8):
+    tft.fill(s3lcd.RED)
+    tft.show()
+    time.sleep(1)
+    tft.fill(s3lcd.GREEN)
+    tft.show()
+    time.sleep(1)
+    tft.fill(s3lcd.BLACK)
+    tft.show()
+    time.sleep(1)
+    tft.fill(s3lcd.BLUE)
+    tft.show()
+    time.sleep(1)
+    tft.fill(s3lcd.WHITE)
+    tft.show()
+    time.sleep(1)
+    tft.fill(s3lcd.MAGENTA)
+    tft.show()
+    time.sleep(1)
+    tft.fill(s3lcd.CYAN)
+    tft.show()
+    time.sleep(1)
+    tft.fill(s3lcd.YELLOW)
+    tft.show()
+    time.sleep(1)
+# END CODE

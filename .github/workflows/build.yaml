@@ -33,7 +33,7 @@ jobs:
       run: |
        cp "$GITHUB_WORKSPACE/s3lcd/examples/configs/t-display-s3/tft_config.py" "$GITHUB_WORKSPACE/s3lcd/modules/"
        cp "$GITHUB_WORKSPACE/s3lcd/examples/configs/t-display-s3/tft_buttons.py" "$GITHUB_WORKSPACE/s3lcd/modules/"
-       cp "$GITHUB_WORKSPACE/s3lcd/examples/chango/chango_16.py" "$GITHUB_WORKSPACE/micropython/ports/esp32/modules/"
+      # cp "$GITHUB_WORKSPACE/s3lcd/examples/chango/chango_16.py" "$GITHUB_WORKSPACE/micropython/ports/esp32/modules/"
       
     - name: Install dependencies
       run: |

@@ -33,7 +33,6 @@ jobs:
       run: |
        cp "$GITHUB_WORKSPACE/s3lcd/examples/configs/t-display-s3/tft_config.py" "$GITHUB_WORKSPACE/s3lcd/modules/"
        cp "$GITHUB_WORKSPACE/s3lcd/examples/configs/t-display-s3/tft_buttons.py" "$GITHUB_WORKSPACE/s3lcd/modules/"
-      # cp "$GITHUB_WORKSPACE/s3lcd/examples/chango/chango_16.py" "$GITHUB_WORKSPACE/micropython/ports/esp32/modules/"
       
     - name: Install dependencies
       run: |
@@ -44,7 +43,7 @@ jobs:
       run: |
         mkdir -p esp
         cd esp
-        git clone -b v5.3.2 --recursive https://github.com/espressif/esp-idf.git
+        git clone -b v5.4 --recursive https://github.com/espressif/esp-idf.git
         cd esp-idf/tools
         python3 idf_tools.py install cmake
         cd ..

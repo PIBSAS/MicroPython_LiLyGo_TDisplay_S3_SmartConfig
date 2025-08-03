@@ -8,7 +8,7 @@ on:
     tags:
      - 'v*'
   schedule:
-     - cron: '0 0 * * 0'
+     - cron: '0 0 * * 0/2'
   
   workflow_dispatch:
 
@@ -28,6 +28,13 @@ jobs:
     
     - name: Clonar s3lcd
       run: git clone https://github.com/russhughes/s3lcd.git
+
+    - name: Parchear s3lcd.c para ESP-IDF v5.4.2
+      run: sed -i 's/self->bus_handle.spi = NULL;/self->bus_handle.spi = 0;/' $GITHUB_WORKSPACE/s3lcd/src/s3lcd.c
+
+    - name: Aplicar parche para errores de mp_raise_ValueError
+      run: |
+        sed -i 's/mp_raise_ValueError(\(.*\));/mp_raise_ValueError(MP_ERROR_TEXT(\1));/' $GITHUB_WORKSPACE/s3lcd/src/s3lcd_i80_bus.c
 
     - name: Copy tdt_config and config_buttons and fonts
       run: |
@@ -55,7 +62,7 @@ jobs:
         cp -r ESP32_GENERIC_S3_N16R8 micropython/ports/esp32/boards/
 
     - name: Compile with S3LCD + SmartConfig
-      continue-on-error: true
+      # continue-on-error: true
       run: |
         source esp/esp-idf/export.sh
         cd micropython/
@@ -70,7 +77,6 @@ jobs:
           -B build-ESP32_GENERIC_S3_N16R8 build
     
     - name: Move binaries with S3LCD + SmartConfig
-      if: success() || failure()
       run: |
         mkdir -p ./artifacts
         cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8/micropython.bin ./artifacts/micropython.bin || true
@@ -96,7 +102,14 @@ jobs:
     - name: Generate Tag
       id: tag
       run: echo "TAG_NAME=release-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
-      
+
+    - name: Verificar existencia de los tres binarios
+      run: |
+        if [ ! -f ./artifacts/micropython.bin ] || [ ! -f ./artifacts/bootloader.bin ] || [ ! -f ./artifacts/partition-table.bin ]; then
+          echo "Falta uno o más archivos binarios necesarios, cancelando release."
+          exit 1
+        fi
+
     - name: GH Release
       uses: softprops/action-gh-release@v2.0.8
       with:

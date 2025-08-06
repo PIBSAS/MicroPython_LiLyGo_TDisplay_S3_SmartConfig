@@ -110,7 +110,7 @@ jobs:
 
     - name: Compile MicroPython with S3LCD + SmartConfig
       run: |
-        source esp/esp-idf/export.sh
+        source esp-idf/export.sh
         cd ${{ github.workspace }}/micropython
         make -j$(nproc) -C mpy-cross
         export IDF_TARGET=esp32s3

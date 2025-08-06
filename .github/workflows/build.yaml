@@ -1,4 +1,4 @@
-name: T-Display-S3 with SmartConfig
+name: T-Display-S3 with SmartConfig + S3LCD Driver
 
 permissions:
   contents: write
@@ -15,14 +15,27 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    env:
+      IDF_CCACHE_ENABLE: 1
     steps:
     - name: Clone this repo
-      uses: actions/checkout@v4
+      uses: actions/checkout@v4.2.2
       
     - name: Clone Micropython now with smartconfig thanks to Walkline80
       run: git clone --recurse-submodules https://github.com/micropython/micropython.git
 
+    - id: idf_ver
+      name: Read ESP-IDF and Python version from tools/ci.sh
+      run: |
+        source micropython/tools/ci.sh
+        echo "IDF_VER=${IDF_VER}" | tee -a "$GITHUB_OUTPUT"
+        echo "PYTHON_VER=${PYTHON_VER}" | tee -a "$GITHUB_OUTPUT"
+      
+    - name: Setup Python from ci.sh
+      uses: actions/setup-python@v5.6.0
+      with:
+        python-version: ${{ steps.idf_ver.outputs.PYTHON_VER }}
+        
     - name: Clone repo smartconfig by Walkline80
       run: git clone https://gitee.com/walkline/micropython-smartconfig-cmodule.git smartconfig
     
@@ -44,18 +57,48 @@ jobs:
     - name: Install dependencies
       run: |
        sudo apt-get update
-       sudo apt-get install -y build-essential git wget flex bison gperf pkg-config python3 python3-pip python3-venv cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
+       sudo apt-get install -y git wget cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
+       #sudo apt-get install -y build-essential git wget flex bison gperf pkg-config cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
 
-    - name: Clone ESP-IDF
+    #- name: Clone ESP-IDF
+     # run: |
+      #  mkdir -p esp
+       # cd esp
+        #git clone -b v5.4.2 --recursive https://github.com/espressif/esp-idf.git
+        #cd esp-idf/tools
+        #python3 idf_tools.py install cmake
+        #cd ..
+        #./install.sh esp32s3
+        #cd
+    - name: Cache ESP-IDF and environment
+      id: cache-esp
+      uses: actions/cache@v4.2.3
+      with:
+        path: |
+          esp-idf
+          ~/.espressif
+        key: esp-full-${{ runner.os }}-${{ steps.idf_ver.outputs.IDF_VER }}-${{ hashFiles('micropython/tools/ci.sh') }}
+        restore-keys: |
+          esp-full-${{ runner.os }}-${{ steps.idf_ver.outputs.IDF_VER }}-
+  
+    - name: Setup ESP-IDF
       run: |
-        mkdir -p esp
-        cd esp
-        git clone -b v5.4.2 --recursive https://github.com/espressif/esp-idf.git
-        cd esp-idf/tools
-        python3 idf_tools.py install cmake
-        cd ..
-        ./install.sh esp32s3
-        cd
+        if [ ! -d "esp-idf" ]; then
+          git clone --depth 1 --branch ${{ steps.idf_ver.outputs.IDF_VER }} https://github.com/espressif/esp-idf.git
+          git -C esp-idf submodule update --init --recursive --depth=1
+        fi
+        
+        if [ ! -d "$HOME/.espressif/python_env" ]; then
+          echo "Instalando entorno virtual de ESP-IDF..."
+          ./esp-idf/install.sh
+        fi
+   
+    - name: Set up environment
+      run: |
+        source esp-idf/export.sh
+        echo "IDF_PATH=$GITHUB_WORKSPACE/esp-idf" >> $GITHUB_ENV
+        idf.py --version
+
 
     - name: Copy board configuration
       run: |
@@ -65,12 +108,11 @@ jobs:
       run: |
         cp "$GITHUB_WORKSPACE/ESP32_GENERIC_S3_N16R8/partitions-16MiB.csv" "$GITHUB_WORKSPACE/micropython/ports/esp32/partitions-16MiB.csv"
 
-    - name: Compile with S3LCD + SmartConfig
-      # continue-on-error: true
+    - name: Compile MicroPython with S3LCD + SmartConfig
       run: |
         source esp/esp-idf/export.sh
-        cd micropython/
-        make -C mpy-cross
+        cd ${{ github.workspace }}/micropython
+        make -j$(nproc) -C mpy-cross
         export IDF_TARGET=esp32s3
         cd ports/esp32/
         idf.py \
@@ -84,6 +126,7 @@ jobs:
       run: |
         mkdir -p ./artifacts
         cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8/micropython.bin ./artifacts/micropython.bin || true
+        cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8/micropython.bin ./artifacts/firmware.bin || true
         cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8/bootloader/bootloader.bin ./artifacts/bootloader.bin || true
         cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8/partition_table/partition-table.bin ./artifacts/partition-table.bin || true
 
@@ -109,13 +152,13 @@ jobs:
 
     - name: Verificar existencia de los tres binarios
       run: |
-        if [ ! -f ./artifacts/micropython.bin ] || [ ! -f ./artifacts/bootloader.bin ] || [ ! -f ./artifacts/partition-table.bin ]; then
+        if [ ! -f ./artifacts/micropython.bin ] || [ ! -f ./artifacts/firmware.bin ] || [ ! -f ./artifacts/bootloader.bin ] || [ ! -f ./artifacts/partition-table.bin ]; then
           echo "Falta uno o más archivos binarios necesarios, cancelando release."
           exit 1
         fi
 
     - name: GH Release
-      uses: softprops/action-gh-release@v2.0.8
+      uses: softprops/action-gh-release@v2.3.2
       with:
         tag_name: ${{ env.TAG_NAME }}
         name: "MicroPython for LilyGo T-Display S3 with S3LCD Driver and SmartConfig by Walkline80 release version ${{ env.MPY_VERSION }} (Build ${{ env.TAG_NAME }})"
@@ -124,78 +167,61 @@ jobs:
           
           ## What we get here:
           - MicroPython with S3LCD Display Driver and SmartConfig module:
-            - ```micropython.bin, bootloader.bin and partition-table.bin.```
+            - ```micropython.bin, bootloader.bin and partition-table.bin. firmware.bin```
           # Instructions
             You need to have some dependencies pre-instaled in your OS:
             - Python 3
             - Pip
             - Python VENV
           
-          ## Windows:
-          ````bash
+          ## Windows or Linux:
+          Create Virtual Environment
+          ```bash
           python -m venv esp-env
-          ````
+          ```
           
-          ````bash
+          ### On Windows activate Virtual Environment this way:
+          ```bash
           .\esp-env\Scripts\activate
-          ````
-          
-          or
-          
-          ````bash
-          py -m venv esp-env
-          ````
-          
-          ````bash
-          .\esp-env\Scripts\activate
-          ````
-          
-          ### Then install esptool:
-          ````bash
-          pip install esptool
-          ````
-          
-          ### Put ESP32-S3-WROOM-1 N16R8 in BOOTLOADER MODE:
-          - With USB cable on USB COM Port, press BOOT button then RST button, release RST, then release BOOT button. Or unplug, press BOOT button meanwhile you plug in the usb cable to PC or SBC like a Raspberry Pi.
-          
-          ### Erase Flash:
-          ````bash
-          python -m esptool --chip esp32s3 erase-flash
-          ````
-          ### Then Flash:
-          - Put 3 binaries in the same folder you are executing the steps, example Downloads folder, you need to be in that folder where are the binaries.
-          ````bash
-          python -m esptool --chip esp32s3 -b 460800 --before default-reset --after no-reset write-flash --flash-mode dio --flash-size 16MB --flash-freq 80m 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 micropython.bin
-          ````
-          
-          ## Linux:
-          
-          ````bash
-          python -m venv esp-env
-          ````
-          
-          ````bash
+          ```
+          ### On Linux activate Virtual Environment this way:
+          ```bash
           source esp-env/bin/activate
-          ````
+          ```
           
-          ### Then install esptool:
-          ````bash
+          ### On Windows or Linux install esptool:
+          ```bash
           pip install esptool
-          ````
+          ```
           
-          ### Put ESP32-S3-WROOM-1 N16R8 in BOOTLOADER MODE:
+          ### Put T-Display-S3 in BOOTLOADER MODE:
           - With USB cable on USB COM Port, press BOOT button then RST button, release RST, then release BOOT button. Or unplug, press BOOT button meanwhile you plug in the usb cable to PC or SBC like a Raspberry Pi.
+          - Alternative: Use Thonny IDE, plug your T-Display-S3, on Thonny Shell type:
+          ```bash
+          from machine import bootloader
+          ```
+          Press ``Enter`` then type:
+          ```bash
+          bootloader()
+          ```
+          Press ``Enter`` then just cose Thonny and go to Terminal with Virtual Environment activate.
           
           ### Erase Flash:
-          ````bash
+          ```bash
           python -m esptool --chip esp32s3 erase-flash
-          ````
+          ```
           ### Then Flash:
           - Put 3 binaries in the same folder you are executing the steps, example Downloads folder, you need to be in that folder where are the binaries.
-          ````bash
+          ```bash
           python -m esptool --chip esp32s3 -b 460800 --before default-reset --after no-reset write-flash --flash-mode dio --flash-size 16MB --flash-freq 80m 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 micropython.bin
-          ````
-          
+          ```
+
+          ### You can check from MicroPython Shell on Thonny with:
+          ```bash
+          help('modules')
+          ```
+          The modules in MicroPython.
+                    
           ### NOTE IN WINDOWS:
           - If you get a PowerShell Scripts Policy Execution Exception that don't let you activate the Virtual Environment:
           

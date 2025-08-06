@@ -58,18 +58,7 @@ jobs:
       run: |
        sudo apt-get update
        sudo apt-get install -y git wget cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
-       #sudo apt-get install -y build-essential git wget flex bison gperf pkg-config cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
 
-    #- name: Clone ESP-IDF
-     # run: |
-      #  mkdir -p esp
-       # cd esp
-        #git clone -b v5.4.2 --recursive https://github.com/espressif/esp-idf.git
-        #cd esp-idf/tools
-        #python3 idf_tools.py install cmake
-        #cd ..
-        #./install.sh esp32s3
-        #cd
     - name: Cache ESP-IDF and environment
       id: cache-esp
       uses: actions/cache@v4.2.3
@@ -126,7 +115,6 @@ jobs:
       run: |
         mkdir -p ./artifacts
         cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8/micropython.bin ./artifacts/micropython.bin || true
-        cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8/micropython.bin ./artifacts/firmware.bin || true
         cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8/bootloader/bootloader.bin ./artifacts/bootloader.bin || true
         cp micropython/ports/esp32/build-ESP32_GENERIC_S3_N16R8/partition_table/partition-table.bin ./artifacts/partition-table.bin || true
 
@@ -152,7 +140,7 @@ jobs:
 
     - name: Verificar existencia de los tres binarios
       run: |
-        if [ ! -f ./artifacts/micropython.bin ] || [ ! -f ./artifacts/firmware.bin ] || [ ! -f ./artifacts/bootloader.bin ] || [ ! -f ./artifacts/partition-table.bin ]; then
+        if [ ! -f ./artifacts/micropython.bin ] || [ ! -f ./artifacts/bootloader.bin ] || [ ! -f ./artifacts/partition-table.bin ]; then
           echo "Falta uno o más archivos binarios necesarios, cancelando release."
           exit 1
         fi
@@ -167,7 +155,7 @@ jobs:
           
           ## What we get here:
           - MicroPython with S3LCD Display Driver and SmartConfig module:
-            - ```micropython.bin, bootloader.bin and partition-table.bin. firmware.bin```
+            - ```micropython.bin, bootloader.bin and partition-table.bin.```
           # Instructions
             You need to have some dependencies pre-instaled in your OS:
             - Python 3

@@ -19,7 +19,7 @@ jobs:
       IDF_CCACHE_ENABLE: 1
     steps:
     - name: Clone this repo
-      uses: actions/checkout@v4.2.2
+      uses: actions/checkout@v5.0.0
       
     - name: Clone Micropython now with smartconfig thanks to Walkline80
       run: git clone --recurse-submodules https://github.com/micropython/micropython.git
@@ -27,12 +27,13 @@ jobs:
     - id: idf_ver
       name: Read ESP-IDF and Python version from tools/ci.sh
       run: |
-        source micropython/tools/ci.sh
+        cd "$GITHUB_WORKSPACE/micropython"
+        source $GITHUB_WORKSPACE/micropython/tools/ci.sh
         echo "IDF_VER=${IDF_VER}" | tee -a "$GITHUB_OUTPUT"
         echo "PYTHON_VER=${PYTHON_VER}" | tee -a "$GITHUB_OUTPUT"
       
     - name: Setup Python from ci.sh
-      uses: actions/setup-python@v5.6.0
+      uses: actions/setup-python@v6.0.0
       with:
         python-version: ${{ steps.idf_ver.outputs.PYTHON_VER }}
         
@@ -42,7 +43,7 @@ jobs:
     - name: Clonar s3lcd
       run: git clone https://github.com/russhughes/s3lcd.git
 
-    - name: Parchear s3lcd.c para ESP-IDF v5.4.2
+    - name: Parchear s3lcd.c para ESP-IDF >=v5.4.2
       run: sed -i 's/self->bus_handle.spi = NULL;/self->bus_handle.spi = 0;/' $GITHUB_WORKSPACE/s3lcd/src/s3lcd.c
 
     - name: Aplicar parche para errores de mp_raise_ValueError
@@ -61,7 +62,7 @@ jobs:
 
     - name: Cache ESP-IDF and environment
       id: cache-esp
-      uses: actions/cache@v4.2.3
+      uses: actions/cache@v4.2.4
       with:
         path: |
           esp-idf
@@ -146,7 +147,7 @@ jobs:
         fi
 
     - name: GH Release
-      uses: softprops/action-gh-release@v2.3.2
+      uses: softprops/action-gh-release@v2.3.3
       with:
         tag_name: ${{ env.TAG_NAME }}
         name: "MicroPython for LilyGo T-Display S3 with S3LCD Driver and SmartConfig by Walkline80 release version ${{ env.MPY_VERSION }} (Build ${{ env.TAG_NAME }})"

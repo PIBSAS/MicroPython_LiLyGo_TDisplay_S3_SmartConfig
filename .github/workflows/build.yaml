@@ -8,7 +8,7 @@ on:
     tags:
      - 'v*'
   schedule:
-     - cron: '0 0 */14 * *'
+     - cron: '0 0 1 * *'
   
   workflow_dispatch:
 
@@ -19,7 +19,7 @@ jobs:
       IDF_CCACHE_ENABLE: 1
     steps:
     - name: Clone this repo
-      uses: actions/checkout@v5.0.0
+      uses: actions/checkout@v6.0.1
       
     - name: Clone Micropython now with smartconfig thanks to Walkline80
       run: git clone --recurse-submodules https://github.com/micropython/micropython.git
@@ -33,7 +33,7 @@ jobs:
         echo "PYTHON_VER=${PYTHON_VER}" | tee -a "$GITHUB_OUTPUT"
       
     - name: Setup Python from ci.sh
-      uses: actions/setup-python@v6.0.0
+      uses: actions/setup-python@v6.1.0
       with:
         python-version: ${{ steps.idf_ver.outputs.PYTHON_VER }}
         
@@ -62,7 +62,7 @@ jobs:
 
     - name: Cache ESP-IDF and environment
       id: cache-esp
-      uses: actions/cache@v4.3.0
+      uses: actions/cache@v5.0.1
       with:
         path: |
           esp-idf
@@ -147,7 +147,7 @@ jobs:
         fi
 
     - name: GH Release
-      uses: softprops/action-gh-release@v2.3.3
+      uses: softprops/action-gh-release@v2.5.0
       with:
         tag_name: ${{ env.TAG_NAME }}
         name: "MicroPython for LilyGo T-Display S3 with S3LCD Driver and SmartConfig by Walkline80 release version ${{ env.MPY_VERSION }} (Build ${{ env.TAG_NAME }})"

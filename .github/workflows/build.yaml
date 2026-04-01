@@ -19,23 +19,20 @@ jobs:
       IDF_CCACHE_ENABLE: 1
     steps:
     - name: Clone this repo
-      uses: actions/checkout@v6.0.1
+      uses: actions/checkout@v6.0.2
       
     - name: Clone Micropython now with smartconfig thanks to Walkline80
       run: git clone --recurse-submodules https://github.com/micropython/micropython.git
 
+    - name: Install yq
+      run: sudo apt-get update && sudo apt-get install -y yq
+
     - id: idf_ver
-      name: Read ESP-IDF and Python version from tools/ci.sh
+      name: Extract IDF version from MicroPython workflow
       run: |
-        cd "$GITHUB_WORKSPACE/micropython"
-        source $GITHUB_WORKSPACE/micropython/tools/ci.sh
-        echo "IDF_VER=${IDF_VER}" | tee -a "$GITHUB_OUTPUT"
-        echo "PYTHON_VER=${PYTHON_VER}" | tee -a "$GITHUB_OUTPUT"
-      
-    - name: Setup Python from ci.sh
-      uses: actions/setup-python@v6.1.0
-      with:
-        python-version: ${{ steps.idf_ver.outputs.PYTHON_VER }}
+        cd micropython
+        IDF_VER=$(yq '.env.IDF_NEWEST_VER' .github/workflows/ports_esp32.yml | tr -d '"')
+        echo "IDF_VER=$IDF_VER" >> $GITHUB_OUTPUT
         
     - name: Clone repo smartconfig by Walkline80
       run: git clone https://gitee.com/walkline/micropython-smartconfig-cmodule.git smartconfig
@@ -62,12 +59,12 @@ jobs:
 
     - name: Cache ESP-IDF and environment
       id: cache-esp
-      uses: actions/cache@v5.0.1
+      uses: actions/cache@v5.0.4
       with:
         path: |
           esp-idf
           ~/.espressif
-        key: esp-full-${{ runner.os }}-${{ steps.idf_ver.outputs.IDF_VER }}-${{ hashFiles('micropython/tools/ci.sh') }}
+        key: esp-full-${{ runner.os }}-${{ steps.idf_ver.outputs.IDF_VER }}
         restore-keys: |
           esp-full-${{ runner.os }}-${{ steps.idf_ver.outputs.IDF_VER }}-
   
@@ -147,7 +144,7 @@ jobs:
         fi
 
     - name: GH Release
-      uses: softprops/action-gh-release@v2.5.0
+      uses: softprops/action-gh-release@v2.6.1
       with:
         tag_name: ${{ env.TAG_NAME }}
         name: "MicroPython for LilyGo T-Display S3 with S3LCD Driver and SmartConfig by Walkline80 release version ${{ env.MPY_VERSION }} (Build ${{ env.TAG_NAME }})"

@@ -94,7 +94,7 @@ jobs:
         cd micropython
         TAG="v${{ env.MPY_VERSION }}"
         if git rev-parse "$TAG" >/dev/null 2>&1; then
-          echo "ℹ️ El tag $TAG ya existe, omitiendo..."
+          echo "El tag $TAG ya existe, omitiendo..."
         else
           git tag "$TAG"
           echo "Tag creado: $TAG"

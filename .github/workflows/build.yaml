@@ -89,12 +89,16 @@ jobs:
 
         echo "MPY_VERSION=$MPY_VERSION" >> $GITHUB_ENV
 
-    - name: Create git tag with version
+    - name: Create git tag with version (if not exists)
       run: |
         cd micropython
-        git tag "v${{ env.MPY_VERSION }}"
-        echo "Tag creado: v${{ env.MPY_VERSION }}"
-        git tag -l | grep "v${{ env.MPY_VERSION }}"
+        TAG="v${{ env.MPY_VERSION }}"
+        if git rev-parse "$TAG" >/dev/null 2>&1; then
+          echo "ℹ️ El tag $TAG ya existe, omitiendo..."
+        else
+          git tag "$TAG"
+          echo "Tag creado: $TAG"
+        fi
     
     - name: Copy board configuration (No more needed)
       if: false
